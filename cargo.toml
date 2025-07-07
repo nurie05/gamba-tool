@@ -1,0 +1,12 @@
+[package]
+name = "operon-finder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.4.6", features = ["derive"] }
+log = "0.4.20"
+anyhow = "1.0.75"
+env_logger = "0.10.0"
+chrono = "0.4.31"
+noodles = { version = "0.99.0", features = ["gtf", "core", "gff"] }
