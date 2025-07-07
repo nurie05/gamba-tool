@@ -43,6 +43,11 @@ struct Transcript {
 }
 
 fn transcripts_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
+    t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
+    && t1.end + tolerance >= t2.end && t2.end > t1.start
+}
+
+fn operontrans_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
     t1.start <= t2.end.saturating_sub(tolerance) && t1.end >= t2.start + 250
 }
 
@@ -54,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.output.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv94.log", out_prefix));
+    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format(move |buf, record| writeln!(buf, "{} - {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.args()))
@@ -73,7 +78,7 @@ fn main() -> anyhow::Result<()> {
         if record.ty() == "transcript" {
             let gid = record.attributes().get("transcript_id".as_ref()).map(|v| v.as_string().unwrap().to_string()).unwrap_or("NA".into()).clone();
             let cov = record.attributes()
-                .get("FPKM".as_ref())
+                .get("cov".as_ref())
                 .and_then(|v| v.as_string())
                 .and_then(|s| s.to_string().parse::<f32>().ok())
                 .unwrap_or(0.0);
@@ -129,12 +134,10 @@ fn main() -> anyhow::Result<()> {
                 if container.id == inner.id || container.strand != inner.strand {
                     continue;
                 }
-                let within_bounds =
-                    (container.start <= inner.start + 250 < container.end + 250 && container.end + 250 >= inner.end > container.start) ;
                 let sufficient_cov = container.coverage * threshold <= inner.coverage;
                 let multi_exonic = inner.exons.len() > 1;
 
-                if within_bounds && sufficient_cov && multi_exonic {
+                if transcripts_overlap(container,inner, 250)==true && sufficient_cov && multi_exonic {
                     contained.push(inner);
                 }
             }
@@ -193,14 +196,14 @@ fn main() -> anyhow::Result<()> {
         .filter(|id| !operon_ids.contains(*id) && gene_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_OperonGenesALL_v94.t{:.2}.gtf", out_prefix, threshold), &all_gene_ids)?;
+    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.2}.gtf", out_prefix, threshold), &all_gene_ids)?;
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
         .filter(|id| !operon_ids.contains(*id) && !gene_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_opCLEAN_v94.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
+    write_gtf(&format!("{}_opCLEAN_v9.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
 
     info!("GTF files written successfully.");
 
