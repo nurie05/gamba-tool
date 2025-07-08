@@ -1,12 +1,14 @@
 // operon_finder.rs
-use std::{collections::{HashMap, HashSet, BTreeMap}, fs::File, path::PathBuf, io::{BufWriter, Write, BufReader, BufRead}};
+use std::{cmp::Ordering, collections::{BTreeMap, HashMap, HashSet}, fs::File, io::{BufRead, BufReader, BufWriter, Write}, path::PathBuf};
 use std::fmt::Debug;
-use clap::builder::TypedValueParser;
+//use clap::builder::TypedValueParser;
 use clap::Parser;
 use log::{info, error};
 use noodles::gtf;
-use noodles::core::Position;
-use noodles::gff::record::attributes::field::Value;
+//use noodles::core::Position;
+//use noodles::gff::record::attributes::field::Value;
+
+type GeneId = String;
 
 #[derive(Parser, Debug)]
 #[command(name = "Operon Finder")]
@@ -42,13 +44,25 @@ struct Transcript {
     raw_lines: Vec<String>,
 }
 
-fn transcripts_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
+fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
+    && t1.coverage * threshold <= t2.coverage
+    && (t2.exons.len() > 1 || (t1.coverage * threshold * 10.0 <= t2.coverage))
+}
+fn transcripts_inside(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
+    t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
+    && t1.end + tolerance >= t2.end && t2.end > t1.start
+    && t1.coverage >= t2.coverage * threshold
+    && (t2.exons.len() > 1 || (t1.coverage >= t2.coverage * threshold * 10.0 ))
+}
+
+fn transcripts_no_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
+    t1.start > t2.end.saturating_sub(tolerance)
 }
 
 fn operontrans_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
-    t1.start <= t2.end.saturating_sub(tolerance) && t1.end >= t2.start + 250
+    t1.start <= t2.end.saturating_sub(tolerance) && t1.end >= t2.start + tolerance
 }
 
 fn main() -> anyhow::Result<()> {
@@ -70,6 +84,8 @@ fn main() -> anyhow::Result<()> {
     let mut transcripts_by_chrom: BTreeMap<String, Vec<Transcript>> = BTreeMap::new();
     let mut exons_by_transcript: HashMap<String, Vec<(u64, u64)>> = HashMap::new();
     let mut raw_lines_by_id: HashMap<String, Vec<String>> = HashMap::new();
+    
+    //let mut gtf_records: Vec<> = HashMap::new();
 
     for result in reader.record_bufs() {
         let record = result?;
@@ -121,31 +137,29 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    let mut operon_to_genes: Vec<(String, String, String)> = Vec::new();
-    let mut operon_ids = HashSet::new();
-    let mut gene_ids = HashSet::new();
-    let mut operon_gene_map: HashMap<String, Vec<String>> = HashMap::new();
+    let mut operon_to_genes: Vec<(GeneId, Transcript, &Transcript)> = Vec::new();
 
     for (chrom, transcripts) in &transcripts_by_chrom {
-        info!("Processing chromosome {} with {} transcripts", chrom, transcripts.len());
+        info!("Processing chromosome {} ({} transcripts)...", chrom, transcripts.len());
         for container in transcripts {
             let mut contained = Vec::new();
+            let mut counter=0;
             for inner in transcripts {
                 if container.id == inner.id || container.strand != inner.strand {
                     continue;
                 }
-                let sufficient_cov = container.coverage * threshold <= inner.coverage;
-                let multi_exonic = inner.exons.len() > 1;
-
-                if transcripts_overlap(container,inner, 250)==true && sufficient_cov && multi_exonic {
+                if transcripts_inside_op(container,inner, 250, threshold) {
                     contained.push(inner);
+                }
+                if transcripts_inside(inner,container, 250, threshold) {
+                    counter += 1;
                 }
             }
 
-            if contained.len() >= 2 {
+            if contained.len() >= 2 && counter ==0 {
                 let mut non_overlapping = Vec::new();
                 for gene in contained {
-                    if non_overlapping.last().map_or(true, |last: &&Transcript| gene.start > last.end.saturating_sub(50)) {
+                    if non_overlapping.last().map_or(true, |last: &&Transcript| transcripts_no_overlap(gene,last,50) ) {
                         non_overlapping.push(gene);
                     } else if gene.coverage > non_overlapping.last().unwrap().coverage {
                         non_overlapping.pop();
@@ -154,11 +168,8 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 if non_overlapping.len() >= 2 {
-                    for gene in non_overlapping.iter() {
-                        operon_to_genes.push((container.gene_id.clone(), container.id.clone(), gene.id.clone()));
-                        operon_ids.insert(container.id.clone());
-                        gene_ids.insert(gene.id.clone());
-                        operon_gene_map.entry(container.gene_id.clone()).or_default().push(gene.id.clone());
+                    for gene in non_overlapping {
+                        operon_to_genes.push((container.gene_id.clone(), container.clone(), gene));
                     }
                 }
             }
@@ -166,22 +177,100 @@ fn main() -> anyhow::Result<()> {
     }
 
     //I need to add the operon operon overlaping loop to assing same oepron_ID to those oves overlaping in the same strand.
+    let mut chr_to_operons: HashMap<(String, String), Vec<(String, &Transcript, &&Transcript)>> = HashMap::new();
+    for (op_gene_id, op_id, trans_id) in operon_to_genes.iter() {
+        chr_to_operons.entry((op_id.chrom.clone(),op_id.strand.clone())).or_default().push((op_gene_id.clone(), op_id, trans_id));
+    }
+
+    let mut overlapping: Vec<(String, Transcript, &Transcript)> = Vec::new();
+    let mut seen_transcripts = HashSet::new();
+    let mut counter = 1;
+    for ((_chrom, _strand), mut op_list) in chr_to_operons {
+        println!("Chromosome {} strand {}: {} putative operons", &_chrom, &_strand, &op_list.len());
+        op_list.sort_by_key(|(_, p, _)| p.start);
+        for (_ , current_op, inner_trans) in op_list {
+            if seen_transcripts.contains(&inner_trans.id) {
+                continue;
+            }
+            if let Some((_, last, _ ) ) = overlapping.last() {
+                if operontrans_overlap(current_op, last, 250) {
+                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+                } else {
+                    counter += 1;
+                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+                }
+            } else {
+                overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+            }
+            seen_transcripts.insert(inner_trans.id.clone());
+        }
+    }
+
+    let mut operon_to_trans: HashMap<String, Vec<(Transcript,&Transcript)>> = HashMap::new();
+    for (op_id, operon, inner_trans) in overlapping.iter() {
+        operon_to_trans.entry(op_id.clone()).or_default().push((operon.clone(), inner_trans.clone()));
+    }
+    let mut operon_to_trans_def: Vec<(String, String, String)> = Vec::new();
+    let mut operon_ids = HashSet::new();
+    let mut gene_ids = HashSet::new();
+    let mut operon_gene_map: HashMap<String, Vec<String>> = HashMap::new();
+
+    for (operon_id, transcripts_list) in operon_to_trans {
+        let mut non_overlapping_def: Vec<(&Transcript)> = Vec::new();
+            for (_, gene) in transcripts_list.iter() {
+                if non_overlapping_def.last().map_or(true, |last: &&Transcript| transcripts_no_overlap(gene,last,50) ) {
+                    non_overlapping_def.push(gene);
+                } else if gene.coverage > non_overlapping_def.last().unwrap().coverage {
+                    non_overlapping_def.pop();
+                    non_overlapping_def.push(gene);
+                }
+                //println!("{}: {}", &gene.id, &operon_id);
+            } 
+        
+            if non_overlapping_def.len() >= 2 {
+                for (operon, gene) in transcripts_list {
+                    if non_overlapping_def.iter().any(|&i| i.id == gene.id ) {
+                        operon_to_trans_def.push((operon_id.clone(), operon.id.clone(), gene.id.clone()));
+                        operon_ids.insert(operon.id.clone());
+                        gene_ids.insert(gene.id.clone());
+                        operon_gene_map.entry(operon_id.clone()).or_default().push(gene.id.clone());
+                    }
+                }
+            }
+    }
 
     let mut tsv_path = out_prefix.clone();
     tsv_path.push_str(&format!("_operons_found_v9.t{:.2}.tsv", threshold));
     let mut tsv_file = BufWriter::new(File::create(&tsv_path)?);
     writeln!(tsv_file, "Operon\tOperonTrans\tContained_transcript")?;
-    for (operon, op_trans, gene) in &operon_to_genes {
-        writeln!(tsv_file, "{}\t{}\t{}", operon, op_trans, gene)?;
+    operon_to_trans_def.sort_by(|(_,e1,_) , (_, e2, _)| {
+            let e1_els = e1.split(".").collect::<Vec<_>>();
+            let e2_els = e2.split(".").collect::<Vec<_>>();
+            let id1 = format!("{}.{}", e1_els[1], e1_els[2]).parse::<f32>().unwrap();
+            let id2 = format!("{}.{}", e2_els[1], e2_els[2]).parse::<f32>().unwrap();
+            if id1 > id2 { Ordering::Greater } else if id1 < id2 { Ordering::Less } else { Ordering::Equal }
+        });
+    for (operon_id, operon, inner_trans) in &operon_to_trans_def {
+        writeln!(tsv_file, "{}\t{}\t{}", operon_id, operon, inner_trans)?;
     }
     info!("Output written to {}", tsv_path);
 
     let write_gtf = |filename: &str, ids: &HashSet<String>| -> anyhow::Result<()> {
         let mut file = BufWriter::new(File::create(filename)?);
-        for id in ids {
+        let mut ids_ordered = Vec::from_iter(ids);
+        ids_ordered.sort_by(|e1, e2| {
+            let e1_els = e1.split(".").collect::<Vec<_>>();
+            let e2_els = e2.split(".").collect::<Vec<_>>();
+            let id1 = e1_els[1].parse::<u32>().unwrap();
+            let id2 = e2_els[1].parse::<u32>().unwrap();
+            if id1 > id2 { Ordering::Greater } else if id1 < id2 { Ordering::Less } else { Ordering::Equal }
+        });
+
+        for id in ids_ordered {
             if let Some(lines) = raw_lines_by_id.get(id) {
                 for line in lines {
-                    writeln!(file, "{}", line.replace("\"\"", "\"").replace("\";\"", "\";"))?;
+                    //writeln!(file, "{}", line.replace("\"\"", "\"").replace("\";\"", "\";"))?;
+                    writeln!(file, "{}", line.replace("\n", ";"))?;
                 }
             }
         }
@@ -206,9 +295,15 @@ fn main() -> anyhow::Result<()> {
     write_gtf(&format!("{}_opCLEAN_v9.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
 
     info!("GTF files written successfully.");
+    
+    println!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
+    info!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
+    println!("Total number of OpGs found: {}", &operon_to_trans_def.len());
+    info!("Total number of OpGs found: {}", operon_to_trans_def.len());
 
     // Summary
     let mut summary = HashMap::from([
+        //("1 gene", 0),
         ("2 genes", 0),
         ("3 genes", 0),
         ("4 genes", 0),
@@ -218,6 +313,7 @@ fn main() -> anyhow::Result<()> {
 
     for (_operon, genes) in operon_gene_map {
         match genes.len() {
+            //1 => *summary.get_mut("1 genes").unwrap() += 1,
             2 => *summary.get_mut("2 genes").unwrap() += 1,
             3 => *summary.get_mut("3 genes").unwrap() += 1,
             4 => *summary.get_mut("4 genes").unwrap() += 1,
