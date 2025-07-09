@@ -4,8 +4,11 @@ use std::fmt::Debug;
 //use clap::builder::TypedValueParser;
 use clap::Parser;
 use itertools::Itertools;
-use log::{info, error};
+//use log::{error, info, Level};
 use noodles::gtf;
+use ftail::Ftail;
+use log::LevelFilter;
+use std::path::Path;
 //use noodles::core::Position;
 //use noodles::gff::record::attributes::field::Value;
 
@@ -75,12 +78,20 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.output.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    //let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
+    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .format(move |buf, record| writeln!(buf, "{} - {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.args()))
-        .target(env_logger::Target::Stdout)
-        .init();
+    Ftail::new()
+        .datetime_format("%Y-%m-%d %H:%M:%S")
+        .console(LevelFilter::Off)
+        //.formatted_console(LevelFilter::Info)
+        .single_file(Path::new(&log_file), false, LevelFilter::Info)
+        //.max_file_size(5)
+        .init()?;
+
+    //env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+    //    .format(move |buf, record| writeln!(buf, "{} - {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.args()))
+    //    .target(env_logger::Target::Stdout)
+    //    .init();
 
     let mut reader = gtf::io::Reader::new(BufReader::new(File::open(gtf_path)?));
     let mut transcripts_by_chrom: BTreeMap<String, Vec<Transcript>> = BTreeMap::new();
@@ -146,7 +157,7 @@ fn main() -> anyhow::Result<()> {
     let mut operon_to_genes: Vec<(GeneId, Transcript, &Transcript)> = Vec::new();
 
     for (chrom, transcripts) in &transcripts_by_chrom {
-        info!("Processing chromosome {} ({} transcripts)...", chrom, transcripts.len());
+        log::info!("Processing chromosome {} ({} transcripts)...", chrom, transcripts.len());
         for container in transcripts {
             let mut contained = Vec::new();
             let mut counter=0;
@@ -198,7 +209,6 @@ fn main() -> anyhow::Result<()> {
     let mut seen_transcripts = HashSet::new();
     let mut counter = 1;
     for ((_chrom, _strand), mut op_list) in chr_to_operons {
-        println!("Chromosome {} strand {}: {} putative operons", &_chrom, &_strand, &op_list.len());
         op_list.sort_by_key(|(_, p, _)| p.start);
         for (_ , current_op, inner_trans) in op_list {
             if seen_transcripts.contains(&inner_trans.id) {
@@ -271,7 +281,7 @@ fn main() -> anyhow::Result<()> {
     for (operon_id, operon, inner_trans) in &operon_to_trans_def {
         writeln!(tsv_file, "{}\t{}\t{}", operon_id, operon, inner_trans)?;
     }
-    info!("Output written to {}", tsv_path);
+    log::info!("Output written to {}", tsv_path);
 
     let write_gtf = |filename: &str, ids: &HashSet<String>| -> anyhow::Result<()> {
         let mut file = BufWriter::new(File::create(filename)?);
@@ -312,15 +322,15 @@ fn main() -> anyhow::Result<()> {
         .collect();
     write_gtf(&format!("{}_opCLEAN_v9.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
 
-    info!("GTF files written successfully.");
+    log::info!("GTF files written successfully.");
     
-    println!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
-    info!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
-    println!("Total number of OpGs found: {}", &operon_to_trans_def.len());
-    info!("Total number of OpGs found: {}", operon_to_trans_def.len());
+    //println!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
+    log::info!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
+    //println!("Total number of OpGs found: {}", &operon_to_trans_def.len());
+    log::info!("Total number of OpGs found: {}", operon_to_trans_def.len());
 
     // Summary
-    let mut summary = HashMap::from([
+    let mut summary = BTreeMap::from([
         //("1 gene", 0),
         ("2 genes", 0),
         ("3 genes", 0),
@@ -341,11 +351,12 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
-    println!("Summary of operons by gene number:");
-    info!("Summary of operons by gene number:");
+    //println!("Summary of operons by gene number:");
+    log::info!("Summary of operons by gene number:");
+
     for (category, count) in &summary {
-        println!("{}: {}", category, count);
-        info!("{}: {}", category, count);
+        //println!("{}: {}", category, count);
+        log::info!("{}: {}", category, count);
     }
 
     Ok(())

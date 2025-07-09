@@ -11,3 +11,4 @@ env_logger = "0.10.0"
 chrono = "0.4.31"
 noodles = { version = "0.99.0", features = ["gtf", "core", "gff"] }
 itertools = "0.8"
+ftail = { version = "0.3"}
