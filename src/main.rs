@@ -1,5 +1,5 @@
 // operon_finder.rs
-use std::{cmp::Ordering, collections::{BTreeMap, HashMap, HashSet}, fs::File, io::{BufRead, BufReader, BufWriter, Write}, path::PathBuf};
+use std::{cmp::Ordering, collections::{BTreeMap, HashMap, HashSet}, fs::File, io::{BufReader, BufWriter, Write}, path::PathBuf};
 use std::fmt::Debug;
 //use clap::builder::TypedValueParser;
 use clap::Parser;
@@ -75,7 +75,7 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.output.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
+    //let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
         .format(move |buf, record| writeln!(buf, "{} - {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.args()))
@@ -206,13 +206,13 @@ fn main() -> anyhow::Result<()> {
             }
             if let Some((_, last, _ ) ) = overlapping.last() {
                 if operontrans_overlap(current_op, last, 250) {
-                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), &inner_trans));
                 } else {
                     counter += 1;
-                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+                    overlapping.push((format!("OPRN.{}", counter), current_op.clone(), &inner_trans));
                 }
             } else {
-                overlapping.push((format!("OPRN.{}", counter), current_op.clone(), inner_trans.clone()));
+                overlapping.push((format!("OPRN.{}", counter), current_op.clone(), &inner_trans));
             }
             seen_transcripts.insert(inner_trans.id.clone());
         }
@@ -220,7 +220,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut operon_to_trans: HashMap<String, Vec<(Transcript,&Transcript)>> = HashMap::new();
     for (op_id, operon, inner_trans) in overlapping.iter() {
-        operon_to_trans.entry(op_id.clone()).or_default().push((operon.clone(), inner_trans.clone()));
+        operon_to_trans.entry(op_id.clone()).or_default().push((operon.clone(), inner_trans));
     }
     let mut operon_to_trans_def: Vec<(String, String, String)> = Vec::new();
     let mut operon_ids = HashSet::new();
