@@ -20,7 +20,7 @@ struct Args {
     file: PathBuf,
 
     /// Coverage threshold multiplier
-    #[arg(long, default_value_t = 1.0)]
+    #[arg(short, long, default_value_t = 1.0)]
     threshold: f32,
 
     /// Output file prefix
