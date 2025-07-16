@@ -155,12 +155,15 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut operon_to_genes: Vec<(GeneId, Transcript, &Transcript)> = Vec::new();
-
+    let mut good_cov_ids = HashSet::new();
     for (chrom, transcripts) in &transcripts_by_chrom {
         log::info!("Processing chromosome {} ({} transcripts)...", chrom, transcripts.len());
         for container in transcripts {
             let mut contained = Vec::new();
             let mut counter=0;
+            if (container.exons.len() > 1 && container.coverage > 1.0 * threshold) || (container.coverage > threshold * 10.0){
+                good_cov_ids.insert(container.id.clone());
+            }
             for inner in transcripts {
                 if container.id == inner.id || container.strand != inner.strand {
                     continue;
@@ -298,7 +301,7 @@ fn main() -> anyhow::Result<()> {
             if let Some(lines) = raw_lines_by_id.get(id) {
                 for line in lines {
                     //writeln!(file, "{}", line.replace("\"\"", "\"").replace("\";\"", "\";"))?;
-                    writeln!(file, "{}", line.replace("\n", ";"))?;
+                    writeln!(file, "{}", line.replace("\n", ";").replace("=", " \"").replace(";", "\";"))?;
                 }
             }
         }
@@ -317,7 +320,7 @@ fn main() -> anyhow::Result<()> {
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
-        .filter(|id| !operon_ids.contains(*id) && !gene_ids.contains(*id))
+        .filter(|id| !operon_ids.contains(*id) && !all_gene_ids.contains(*id) && good_cov_ids.contains(*id))
         .cloned()
         .collect();
     write_gtf(&format!("{}_opCLEAN_v9.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
