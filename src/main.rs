@@ -238,6 +238,7 @@ fn main() -> anyhow::Result<()> {
     let mut operon_to_trans_def: Vec<(String, String, String)> = Vec::new();
     let mut operon_ids = HashSet::new();
     let mut gene_ids = HashSet::new();
+    let mut all_gene_gids = HashSet::new();
     let mut operon_gene_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (operon_id, transcripts_list) in operon_to_trans {
@@ -264,6 +265,7 @@ fn main() -> anyhow::Result<()> {
                     operon_to_trans_def.push((operon_id.clone(), operon.id.clone(), gene.id.clone()));
                     operon_ids.insert(operon.id.clone());
                     gene_ids.insert(gene.id.clone());
+                    all_gene_gids.insert(gene.gene_id.clone());
                     operon_gene_map.entry(operon_id.clone()).or_default().push(gene.id.clone());
                 }
             }
@@ -271,7 +273,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut tsv_path = out_prefix.clone();
-    tsv_path.push_str(&format!("_operons_found_v9.t{:.2}.tsv", threshold));
+    tsv_path.push_str(&format!("_operons_found_v9.t{:.1}.tsv", threshold));
     let mut tsv_file = BufWriter::new(File::create(&tsv_path)?);
     writeln!(tsv_file, "Operon\tOperonTrans\tContained_transcript")?;
     operon_to_trans_def.sort_by(|(_,e1,_) , (_, e2, _)| {
@@ -308,22 +310,31 @@ fn main() -> anyhow::Result<()> {
         Ok(())
     };
 
-    write_gtf(&format!("{}_Operons_v9.t{:.2}.gtf", out_prefix, threshold), &operon_ids)?;
-    write_gtf(&format!("{}_OperonGenes_v9.t{:.2}.gtf", out_prefix, threshold), &gene_ids)?;
+    write_gtf(&format!("{}_Operons_v9.t{:.1}.gtf", out_prefix, threshold), &operon_ids)?;
+    write_gtf(&format!("{}_OperonGenes_v9.t{:.1}.gtf", out_prefix, threshold), &gene_ids)?;
 
-    let all_gene_ids: HashSet<String> = raw_lines_by_id
+    let mut all_gids = HashSet::new();
+    for (_, transcripts) in &transcripts_by_chrom {
+        for trans in transcripts {
+            if all_gene_gids.contains(&trans.gene_id) {
+                all_gids.insert(trans.id.clone());
+            }
+        }
+    }
+
+    let all_genes_ids: HashSet<String> = raw_lines_by_id
         .keys()
-        .filter(|id| !operon_ids.contains(*id) && gene_ids.contains(*id))
+        .filter(|id| !operon_ids.contains(*id) && all_gids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.2}.gtf", out_prefix, threshold), &all_gene_ids)?;
+    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.1}.gtf", out_prefix, threshold), &all_genes_ids)?;
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
-        .filter(|id| !operon_ids.contains(*id) && !all_gene_ids.contains(*id) && good_cov_ids.contains(*id))
+        .filter(|id| !operon_ids.contains(*id) && !all_gids.contains(*id) && good_cov_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_opCLEAN_v9.t{:.2}.gtf", out_prefix, threshold), &clean_ids)?;
+    write_gtf(&format!("{}_opCLEAN_v9.t{:.1}.gtf", out_prefix, threshold), &clean_ids)?;
 
     log::info!("GTF files written successfully.");
     
