@@ -310,8 +310,8 @@ fn main() -> anyhow::Result<()> {
         Ok(())
     };
 
-    write_gtf(&format!("{}_Operons_v9.t{:.1}.gtf", out_prefix, threshold), &operon_ids)?;
-    write_gtf(&format!("{}_OperonGenes_v9.t{:.1}.gtf", out_prefix, threshold), &gene_ids)?;
+    write_gtf(&format!("{}_Operons_v9.t{:.1}.clean.gtf", out_prefix, threshold), &operon_ids)?;
+    write_gtf(&format!("{}_OperonGenes_v9.t{:.1}.clean.gtf", out_prefix, threshold), &gene_ids)?;
 
     let mut all_gids = HashSet::new();
     for (_, transcripts) in &transcripts_by_chrom {
@@ -327,14 +327,14 @@ fn main() -> anyhow::Result<()> {
         .filter(|id| !operon_ids.contains(*id) && all_gids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.1}.gtf", out_prefix, threshold), &all_genes_ids)?;
+    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.1}.clean.gtf", out_prefix, threshold), &all_genes_ids)?;
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
         .filter(|id| !operon_ids.contains(*id) && !all_gids.contains(*id) && good_cov_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_opCLEAN_v9.t{:.1}.gtf", out_prefix, threshold), &clean_ids)?;
+    write_gtf(&format!("{}_opCLEAN_v9.t{:.1}.clean.gtf", out_prefix, threshold), &clean_ids)?;
 
     log::info!("GTF files written successfully.");
     
