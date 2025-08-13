@@ -1,10 +1,8 @@
 // operon_finder.rs
 use std::{cmp::Ordering, collections::{BTreeMap, HashMap, HashSet}, fs::File, io::{BufReader, BufWriter, Write}, path::PathBuf};
 use std::fmt::Debug;
-//use clap::builder::TypedValueParser;
 use clap::Parser;
 use itertools::Itertools;
-//use log::{error, info, Level};
 use noodles::gtf;
 use ftail::Ftail;
 use log::LevelFilter;
@@ -83,15 +81,8 @@ fn main() -> anyhow::Result<()> {
     Ftail::new()
         .datetime_format("%Y-%m-%d %H:%M:%S")
         .console(LevelFilter::Off)
-        //.formatted_console(LevelFilter::Info)
         .single_file(Path::new(&log_file), false, LevelFilter::Info)
-        //.max_file_size(5)
         .init()?;
-
-    //env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-    //    .format(move |buf, record| writeln!(buf, "{} - {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), record.args()))
-    //    .target(env_logger::Target::Stdout)
-    //    .init();
 
     let mut reader = gtf::io::Reader::new(BufReader::new(File::open(gtf_path)?));
     let mut transcripts_by_chrom: BTreeMap<String, Vec<Transcript>> = BTreeMap::new();
@@ -114,7 +105,6 @@ fn main() -> anyhow::Result<()> {
                 .and_then(|v| v.as_string())
                 .and_then(|s| s.to_string().parse::<f32>().ok())
                 .unwrap_or(0.0);
-            //let cov = record.attributes().get("cov".as_ref()).and_then(|v| v.parse::<f32>().ok()).unwrap_or(0.0);
             let transcript = Transcript {
                 id: tid.clone(),
                 gene_id: gid,
@@ -312,7 +302,6 @@ fn main() -> anyhow::Result<()> {
         for id in ids_ordered {
             if let Some(lines) = raw_lines_by_id.get(id) {
                 for line in lines {
-                    //writeln!(file, "{}", line.replace("\"\"", "\"").replace("\";\"", "\";"))?;
                     writeln!(file, "{}", line.replace("\n", ";").replace("=", " \"").replace(";", "\";"))?;
                 }
             }
