@@ -186,10 +186,18 @@ fn main() -> anyhow::Result<()> {
                     if non_overlapping.last().map_or(true, |last: &&Transcript| transcripts_no_overlap(gene,last,50) ) {
                         non_overlapping.push(gene);
                     } else {
-                        let last = non_overlapping.last().unwrap();
-                        if gene.fpkm_val > last.fpkm_val || (gene.fpkm_val == last.fpkm_val && gene.exons.len() > non_overlapping.last().unwrap().exons.len()) {
-                            non_overlapping.pop();
-                            non_overlapping.push(gene);
+                        let last = non_overlapping.last().unwrap().clone();
+                        if gene.exons.len() > 1 {
+                            if last.exons.len() == 1 || gene.fpkm_val > last.fpkm_val || (gene.fpkm_val == last.fpkm_val && gene.exons.len() > last.exons.len()) {
+                                non_overlapping.pop();
+                                non_overlapping.push(gene);
+                            }
+                        }
+                        if gene.exons.len() == 1 && last.exons.len() == 1 {
+                            if gene.fpkm_val > last.fpkm_val {
+                                non_overlapping.pop();
+                                non_overlapping.push(gene);
+                            }
                         }
                     }
                 }
@@ -239,6 +247,7 @@ fn main() -> anyhow::Result<()> {
     let mut operon_ids = HashSet::new();
     let mut gene_ids = HashSet::new();
     let mut all_gene_gids = HashSet::new();
+    let mut all_oprn_gids = HashSet::new();
     let mut operon_gene_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (operon_id, transcripts_list) in operon_to_trans {
@@ -266,6 +275,7 @@ fn main() -> anyhow::Result<()> {
                     operon_ids.insert(operon.id.clone());
                     gene_ids.insert(gene.id.clone());
                     all_gene_gids.insert(gene.gene_id.clone());
+                    all_oprn_gids.insert(operon.gene_id.clone());
                     operon_gene_map.entry(operon_id.clone()).or_default().push(gene.id.clone());
                 }
             }
@@ -316,7 +326,7 @@ fn main() -> anyhow::Result<()> {
     let mut all_gids = HashSet::new();
     for (_, transcripts) in &transcripts_by_chrom {
         for trans in transcripts {
-            if all_gene_gids.contains(&trans.gene_id) {
+            if all_gene_gids.contains(&trans.gene_id) || all_oprn_gids.contains(&trans.gene_id) {
                 all_gids.insert(trans.id.clone());
             }
         }
@@ -338,9 +348,7 @@ fn main() -> anyhow::Result<()> {
 
     log::info!("GTF files written successfully.");
     
-    //println!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
     log::info!("Total number of OPRNs found: {}", &operon_gene_map.keys().len());
-    //println!("Total number of OpGs found: {}", &operon_to_trans_def.len());
     log::info!("Total number of OpGs found: {}", operon_to_trans_def.len());
 
     // Summary
