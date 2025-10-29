@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.output.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFv9.log", out_prefix));
+    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFr1.log", out_prefix));
 
     Ftail::new()
         .datetime_format("%Y-%m-%d %H:%M:%S")
@@ -273,7 +273,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     let mut tsv_path = out_prefix.clone();
-    tsv_path.push_str(&format!("_operons_found_v9.t{:.1}.tsv", threshold));
+    tsv_path.push_str(&format!("_operons_found_t{:.1}.tsv", threshold));
     let mut tsv_file = BufWriter::new(File::create(&tsv_path)?);
     writeln!(tsv_file, "Operon\tOperonTrans\tContained_transcript")?;
     operon_to_trans_def.sort_by(|(_,e1,_) , (_, e2, _)| {
@@ -309,8 +309,8 @@ fn main() -> anyhow::Result<()> {
         Ok(())
     };
 
-    write_gtf(&format!("{}_Operons_v9.t{:.1}.gtf", out_prefix, threshold), &operon_ids)?;
-    write_gtf(&format!("{}_OperonGenes_v9.t{:.1}.gtf", out_prefix, threshold), &gene_ids)?;
+    write_gtf(&format!("{}_Operons_t{:.1}.gtf", out_prefix, threshold), &operon_ids)?;
+    write_gtf(&format!("{}_OperonGenes_t{:.1}.gtf", out_prefix, threshold), &gene_ids)?;
 
     let mut all_gids = HashSet::new();
     for (_, transcripts) in &transcripts_by_chrom {
@@ -326,14 +326,14 @@ fn main() -> anyhow::Result<()> {
         .filter(|id| !operon_ids.contains(*id) && all_gids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_OperonGenesALL_v9.t{:.1}.gtf", out_prefix, threshold), &all_genes_ids)?;
+    write_gtf(&format!("{}_OperonGenesALL_t{:.1}.gtf", out_prefix, threshold), &all_genes_ids)?;
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
         .filter(|id| !operon_ids.contains(*id) && !all_gids.contains(*id) && good_cov_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_opCLEAN_v9.t{:.1}.gtf", out_prefix, threshold), &clean_ids)?;
+    write_gtf(&format!("{}_opCLEAN_t{:.1}.gtf", out_prefix, threshold), &clean_ids)?;
 
     log::info!("GTF files written successfully.");
     
