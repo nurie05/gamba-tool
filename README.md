@@ -1,11 +1,10 @@
-### Operon Finder
+## Operon Finder
 
 This is a tool coded in **_Rust_** to search for operons among annotated transcripts.
 The search is based on transcirpt position, structure and expression level.
 It requires a GTF files with the values of 'cov' and 'fpkm', as are used during operon selection.
 
-## Usage
-
+### Usage
 This tool has few parameters that can be specified (use --help to get the usage message):
 
     -f, --file <FILE>            Path to the input GTF file
