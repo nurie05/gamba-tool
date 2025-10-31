@@ -1,6 +1,6 @@
 [package]
-name = "operon-finder"
-version = "1.3.0"
+name = "gamba-tool"
+version = "1.3.2"
 edition = "2024"
 
 [dependencies]
