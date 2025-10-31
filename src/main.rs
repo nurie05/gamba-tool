@@ -1,4 +1,4 @@
-// operon_finder.rs
+// gamba-tool.rs
 use std::{cmp::Ordering, collections::{BTreeMap, HashMap, HashSet}, fs::File, io::{BufReader, BufWriter, Write}, path::PathBuf};
 use std::fmt::Debug;
 use clap::Parser;
@@ -13,8 +13,8 @@ use std::path::Path;
 type GeneId = String;
 
 #[derive(Parser, Debug)]
-#[command(name = "Operon Finder")]
-#[command(about = "Detect operons from a GTF file with coverage filtering.", long_about = None)]
+#[command(name = "GAMBA")]
+#[command(about = "Detect polycistronic transcriptional units (operons) from a GTF file using coverage filtering.", long_about = None)]
 struct Args {
     /// Path to the input GTF file
     #[arg(short, long)]
