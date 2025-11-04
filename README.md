@@ -16,6 +16,6 @@ This tool has few parameters that can be specified (use --help to get the usage 
 
 The generic command line for the default usage is:
 
-    gamba-tool --file FILE.gtf --threshold 1 --output FILE-PREFIX --log FILE-PREFIX_OFr1.log
+    gamba-tool --file FILE.gtf --threshold 1 --output FILE-PREFIX --log FILE-PREFIX_gamba.log
 
 Notice that only the '--file' parameter is mandatory. In case the '--output' is not specified it will use the file name as output prefix for all files, including the log file.
