@@ -76,7 +76,7 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.output.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_OFr1.log", out_prefix));
+    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_gamba.log", out_prefix));
 
     Ftail::new()
         .datetime_format("%Y-%m-%d %H:%M:%S")
