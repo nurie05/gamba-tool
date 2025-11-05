@@ -58,26 +58,35 @@ jobs:
       - name: Update formula with new release info
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          FORMULA="Formula/gamba.rb"
+          FORMULA="tap/Formula/gamba.rb"
           REPO="${{ github.repository }}"
           BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
 
-          echo "Computing SHA256s..."
-          curl -L "$BASE_URL/gamba-aarch64-apple-darwin.zip" -o arm.zip
-          curl -L "$BASE_URL/gamba-x86_64-apple-darwin.zip" -o intel.zip
-          curl -L "$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip" -o linux.zip
+          echo "Downloading binaries to compute SHA256s..."
+          curl -L "$BASE_URL/gamba-aarch64-apple-darwin.zip" -o arm_mac.zip
+          curl -L "$BASE_URL/gamba-x86_64-apple-darwin.zip" -o intel_mac.zip
+          curl -L "$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip" -o linux_x86.zip
+          curl -L "$BASE_URL/gamba-aarch64-unknown-linux-gnu.zip" -o linux_arm.zip
 
-          ARM_SHA=$(shasum -a 256 arm.zip | cut -d ' ' -f1)
-          INTEL_SHA=$(shasum -a 256 intel.zip | cut -d ' ' -f1)
-          LINUX_SHA=$(shasum -a 256 linux.zip | cut -d ' ' -f1)
+          ARM_MAC_SHA=$(shasum -a 256 arm_mac.zip | cut -d ' ' -f1)
+          INTEL_MAC_SHA=$(shasum -a 256 intel_mac.zip | cut -d ' ' -f1)
+          LINUX_X86_SHA=$(shasum -a 256 linux_x86.zip | cut -d ' ' -f1)
+          LINUX_ARM_SHA=$(shasum -a 256 linux_arm.zip | cut -d ' ' -f1)
 
           echo "Updating $FORMULA..."
+          sed -i "s|version \".*\"|version \"$VERSION\"|" "$FORMULA"
+
           sed -i "s|url \".*aarch64-apple-darwin.zip\"|url \"$BASE_URL/gamba-aarch64-apple-darwin.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# arm64\"|sha256 \"$ARM_SHA\" # arm64|" "$FORMULA"
+          sed -i "s|sha256 \".*# arm64\"|sha256 \"$ARM_MAC_SHA\" # arm64|" "$FORMULA"
+
           sed -i "s|url \".*x86_64-apple-darwin.zip\"|url \"$BASE_URL/gamba-x86_64-apple-darwin.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# intel\"|sha256 \"$INTEL_SHA\" # intel|" "$FORMULA"
+          sed -i "s|sha256 \".*# intel\"|sha256 \"$INTEL_MAC_SHA\" # intel|" "$FORMULA"
+
           sed -i "s|url \".*x86_64-unknown-linux-gnu.zip\"|url \"$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# linux\"|sha256 \"$LINUX_SHA\" # linux|" "$FORMULA"
+          sed -i "s|sha256 \".*# linux-x86\"|sha256 \"$LINUX_X86_SHA\" # linux-x86|" "$FORMULA"
+
+          sed -i "s|url \".*aarch64-unknown-linux-gnu.zip\"|url \"$BASE_URL/gamba-aarch64-unknown-linux-gnu.zip\"|" "$FORMULA"
+          sed -i "s|sha256 \".*# linux-arm\"|sha256 \"$LINUX_ARM_SHA\" # linux-arm|" "$FORMULA"
 
       - name: Commit and push updated formula
         run: |
