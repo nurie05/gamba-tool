@@ -58,7 +58,7 @@ jobs:
       - name: Update formula with new release info
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          FORMULA="tap/Formula/gamba.rb"
+          FORMULA="Formula/gamba.rb"
           REPO="${{ github.repository }}"
           BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
 
