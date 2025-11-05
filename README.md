@@ -1,7 +1,7 @@
 ## GAMBA: Gene Aggregation tool for Multicistronic Block Annotation
 
 GAMBA is a tool coded in **_Rust_** that identifies polycistronic transcriptional units (operons) among the annotated transcripts of a GTF file.
-The detection is based on transcirpt position, structure and expression level.
+The detection is based on transcript position, structure and expression level.
 It requires a GTF files with the values of 'cov' and 'fpkm', used during operon selection.
 
 ### Usage
