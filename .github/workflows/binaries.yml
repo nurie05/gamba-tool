@@ -77,16 +77,16 @@ jobs:
           sed -i "s|version \".*\"|version \"$VERSION\"|" "$FORMULA"
 
           sed -i "s|url \".*aarch64-apple-darwin.zip\"|url \"$BASE_URL/gamba-aarch64-apple-darwin.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# arm64\"|sha256 \"$ARM_MAC_SHA\" # arm64|" "$FORMULA"
+          sed -i -E "s|^[[:space:]]*sha256[[:space:]]+\"[^\"]+\"[[:space:]]+# arm64$|      sha256 \"$ARM_MAC_SHA\" # arm64|" "$FORMULA"
 
           sed -i "s|url \".*x86_64-apple-darwin.zip\"|url \"$BASE_URL/gamba-x86_64-apple-darwin.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# intel\"|sha256 \"$INTEL_MAC_SHA\" # intel|" "$FORMULA"
+          sed -i -E "s|^[[:space:]]*sha256[[:space:]]+\"[^\"]+\"[[:space:]]+# intel$|      sha256 \"$INTEL_MAC_SHA\" # intel|" "$FORMULA"
 
           sed -i "s|url \".*x86_64-unknown-linux-gnu.zip\"|url \"$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# linux-x86\"|sha256 \"$LINUX_X86_SHA\" # linux-x86|" "$FORMULA"
+          sed -i -E "s|^[[:space:]]*sha256[[:space:]]+\"[^\"]+\"[[:space:]]+# linux-x86$|      sha256 \"$LINUX_X86_SHA\" # linux-x86|" "$FORMULA"
 
           sed -i "s|url \".*aarch64-unknown-linux-gnu.zip\"|url \"$BASE_URL/gamba-aarch64-unknown-linux-gnu.zip\"|" "$FORMULA"
-          sed -i "s|sha256 \".*# linux-arm\"|sha256 \"$LINUX_ARM_SHA\" # linux-arm|" "$FORMULA"
+          sed -i -E "s|^[[:space:]]*sha256[[:space:]]+\"[^\"]+\"[[:space:]]+# linux-arm$|      sha256 \"$LINUX_ARM_SHA\" # linux-arm|" "$FORMULA"
 
       - name: Commit and push updated formula
         run: |
