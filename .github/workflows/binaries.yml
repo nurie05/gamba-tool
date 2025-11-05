@@ -1,38 +1,89 @@
+name: Build and Upload Binaries
+
 on:
-  push:
-    tags:
-      - "v*"
   release:
     types: [published]
-env:
-  CARGO_TERM_COLOR: always
+
 jobs:
-  build:
-    name: Build and upload artifacts
+  build-and-upload:
+    name: Build binaries for release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          - os: macos-latest
-            target: aarch64-apple-darwin
           - os: macos-13
             target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
-      - name: Package artifact
+
+      - name: Package as ZIP
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/gamba dist/gamba-${{ matrix.target }}
-          cd dist
-          tar czf gamba-${{ matrix.target }}.tar.gz gamba-${{ matrix.target }}
+          cd target/${{ matrix.target }}/release
+          zip -r ../../../dist/gamba-${{ matrix.target }}.zip gamba
           cd -
-      - name: Upload to existing GitHub release
+
+      - name: Upload ZIP to existing GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.tar.gz
+          files: dist/*.zip
           token: ${{ secrets.GAMBA_GITHUB_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew formula
+    runs-on: ubuntu-latest
+    needs: build-and-upload
+    steps:
+      - name: Checkout gamba-tool
+        uses: actions/checkout@v4
+
+      - name: Clone homebrew tap
+        run: |
+          git clone https://github.com/nurie05/homebrew-tools.git tap
+
+      - name: Update formula with new release info
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          FORMULA="tap/Formula/gamba.rb"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
+
+          echo "Computing SHA256s..."
+          curl -L "$BASE_URL/gamba-aarch64-apple-darwin.zip" -o arm.zip
+          curl -L "$BASE_URL/gamba-x86_64-apple-darwin.zip" -o intel.zip
+          curl -L "$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip" -o linux.zip
+
+          ARM_SHA=$(shasum -a 256 arm.zip | cut -d ' ' -f1)
+          INTEL_SHA=$(shasum -a 256 intel.zip | cut -d ' ' -f1)
+          LINUX_SHA=$(shasum -a 256 linux.zip | cut -d ' ' -f1)
+
+          echo "Updating $FORMULA..."
+          sed -i "s|url \".*aarch64-apple-darwin.zip\"|url \"$BASE_URL/gamba-aarch64-apple-darwin.zip\"|" "$FORMULA"
+          sed -i "s|sha256 \".*# arm64\"|sha256 \"$ARM_SHA\" # arm64|" "$FORMULA"
+          sed -i "s|url \".*x86_64-apple-darwin.zip\"|url \"$BASE_URL/gamba-x86_64-apple-darwin.zip\"|" "$FORMULA"
+          sed -i "s|sha256 \".*# intel\"|sha256 \"$INTEL_SHA\" # intel|" "$FORMULA"
+          sed -i "s|url \".*x86_64-unknown-linux-gnu.zip\"|url \"$BASE_URL/gamba-x86_64-unknown-linux-gnu.zip\"|" "$FORMULA"
+          sed -i "s|sha256 \".*# linux\"|sha256 \"$LINUX_SHA\" # linux|" "$FORMULA"
+
+      - name: Commit and push updated formula
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/gamba.rb
+          git commit -m "Update gamba formula to v${GITHUB_REF#refs/tags/v}"
+          git push https://nurie05:${{ secrets.GAMBA_GITHUB_TOKEN }}@github.com/nurie05/homebrew-tools.git HEAD:main
