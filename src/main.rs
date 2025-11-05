@@ -26,7 +26,11 @@ struct Args {
 
     /// Output file prefix
     #[arg(short, long)]
-    output: Option<String>,
+    prefix: Option<String>,
+
+    /// Output file dir
+    #[arg(short, long)]
+    out_dir: Option<String>,
 
     /// Log file path
     #[arg(long)]
@@ -73,10 +77,25 @@ fn main() -> anyhow::Result<()> {
 
     let gtf_path = &args.file;
     let threshold = args.threshold;
-    let out_prefix = args.output.clone().unwrap_or_else(|| {
+    let out_prefix = args.prefix.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let log_file = args.log.clone().unwrap_or_else(|| format!("{}_gamba.log", out_prefix));
+    let out_dir_opt = args.out_dir.clone();
+
+    // Helper to resolve final GTF output path respecting optional out_dir
+    let gtf_out_path = |name: String| -> String {
+        if let Some(ref out_dir) = out_dir_opt {
+            Path::new(out_dir).join(name).to_string_lossy().to_string()
+        } else {
+            name
+        }
+    };
+
+    if let Some(ref out_dir) = out_dir_opt {
+        std::fs::create_dir_all(out_dir)?;
+    }
+
+    let log_file = args.log.clone().unwrap_or_else(|| gtf_out_path(format!("{}_gamba.log", out_prefix)));
 
     Ftail::new()
         .datetime_format("%Y-%m-%d %H:%M:%S")
@@ -274,7 +293,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut tsv_path = out_prefix.clone();
     tsv_path.push_str(&format!("_operons_found_t{:.1}.tsv", threshold));
-    let mut tsv_file = BufWriter::new(File::create(&tsv_path)?);
+    let mut tsv_file = BufWriter::new(File::create(&gtf_out_path(tsv_path.clone()))?);
     writeln!(tsv_file, "Operon\tOperonTrans\tContained_transcript")?;
     operon_to_trans_def.sort_by(|(_,e1,_) , (_, e2, _)| {
             let e1_els = e1.split(".").collect::<Vec<_>>();
@@ -309,8 +328,8 @@ fn main() -> anyhow::Result<()> {
         Ok(())
     };
 
-    write_gtf(&format!("{}_Operons_t{:.1}.gtf", out_prefix, threshold), &operon_ids)?;
-    write_gtf(&format!("{}_OperonGenes_t{:.1}.gtf", out_prefix, threshold), &gene_ids)?;
+    write_gtf(&gtf_out_path(format!("{}_Operons_t{:.1}.gtf", out_prefix, threshold)), &operon_ids)?;
+    write_gtf(&gtf_out_path(format!("{}_OperonGenes_t{:.1}.gtf", out_prefix, threshold)), &gene_ids)?;
 
     let mut all_gids = HashSet::new();
     for (_, transcripts) in &transcripts_by_chrom {
@@ -326,14 +345,14 @@ fn main() -> anyhow::Result<()> {
         .filter(|id| !operon_ids.contains(*id) && all_gids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_OperonGenesALL_t{:.1}.gtf", out_prefix, threshold), &all_genes_ids)?;
+    write_gtf(&gtf_out_path(format!("{}_OperonGenesALL_t{:.1}.gtf", out_prefix, threshold)), &all_genes_ids)?;
 
     let clean_ids: HashSet<String> = raw_lines_by_id
         .keys()
         .filter(|id| !operon_ids.contains(*id) && !all_gids.contains(*id) && good_cov_ids.contains(*id))
         .cloned()
         .collect();
-    write_gtf(&format!("{}_opCLEAN_t{:.1}.gtf", out_prefix, threshold), &clean_ids)?;
+    write_gtf(&gtf_out_path(format!("{}_opCLEAN_t{:.1}.gtf", out_prefix, threshold)), &clean_ids)?;
 
     log::info!("GTF files written successfully.");
     
