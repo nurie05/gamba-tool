@@ -28,9 +28,9 @@ struct Args {
     #[arg(short, long)]
     prefix: Option<String>,
 
-    /// Output file dir
+    /// Output directory
     #[arg(short, long)]
-    out_dir: Option<String>,
+    outdir: Option<String>,
 
     /// Log file path
     #[arg(long)]
@@ -80,19 +80,19 @@ fn main() -> anyhow::Result<()> {
     let out_prefix = args.prefix.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
-    let out_dir_opt = args.out_dir.clone();
+    let outdir_opt = args.outdir.clone();
 
-    // Helper to resolve final GTF output path respecting optional out_dir
+    // Helper to resolve final GTF output path respecting optional outdir
     let gtf_out_path = |name: String| -> String {
-        if let Some(ref out_dir) = out_dir_opt {
-            Path::new(out_dir).join(name).to_string_lossy().to_string()
+        if let Some(ref outdir) = outdir_opt {
+            Path::new(outdir).join(name).to_string_lossy().to_string()
         } else {
             name
         }
     };
 
-    if let Some(ref out_dir) = out_dir_opt {
-        std::fs::create_dir_all(out_dir)?;
+    if let Some(ref outdir) = outdir_opt {
+        std::fs::create_dir_all(outdir)?;
     }
 
     let log_file = args.log.clone().unwrap_or_else(|| gtf_out_path(format!("{}_gamba.log", out_prefix)));
