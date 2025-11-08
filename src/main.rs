@@ -50,18 +50,36 @@ struct Transcript {
     exons: Vec<(u64, u64)>,
     raw_lines: Vec<String>,
 }
+fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: u64) -> bool {
+    let mut count_overlap = 0 ;
+    for (s1, e1) in &t1.exons {
+        for (s2, e2) in &t2.exons {
+            let overlap_start = std::cmp::max(*s1, *s2);
+            let overlap_end = std::cmp::min(*e1, *e2);
+            if overlap_end > overlap_start && (overlap_end - overlap_start) >= min_overlap {
+                count_overlap +=1 ;
+            }
+        }
+    }
+    if count_overlap >= (&t2.exons.len()/2) {
+        return true ;
+    }
+    false
+}
 
 fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage * threshold < t2.coverage
     && (t2.exons.len() > 1 || (t1.coverage * threshold * 10.0 < t2.coverage))
+    && exons_overlap(t1, t2, 50)
 }
 fn transcripts_inside(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage > t2.coverage * threshold
     && (t2.exons.len() > 1 || (t1.coverage > t2.coverage * threshold * 10.0 ))
+    && exons_overlap(t1, t2, 50)
 }
 
 fn transcripts_no_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
