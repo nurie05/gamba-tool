@@ -67,8 +67,8 @@ fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: f32, bp_overlap:
     let mut bp_overlap = bp_overlap ;
     for (s1, e1) in &t1.exons {
         for (s2, e2) in &t2.exons {
-            if e1-s1 < bp_overlap || e2-s2 < bp_overlap {
-                bp_overlap = std::cmp::min(*e2-*s2, *e1-*s1)
+            if e1.saturating_sub(*s1) < bp_overlap || e2.saturating_sub(*s2) < bp_overlap {
+                bp_overlap = std::cmp::min(e2.saturating_sub(*s2), e1.saturating_sub(*s1))
             }
             let overlap_start = std::cmp::max(*s1, *s2);
             let overlap_end = std::cmp::min(*e1, *e2);
