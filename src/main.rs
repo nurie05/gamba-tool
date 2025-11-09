@@ -20,7 +20,7 @@ type GeneId = String;
     long_about = None
 )]
 struct Args {
-    /// Path to the input GTF file
+    /// Path to the input GTF file.
     #[arg(short, long)]
     file: PathBuf,
 
