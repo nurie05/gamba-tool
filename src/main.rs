@@ -72,7 +72,7 @@ fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: f32, bp_overlap:
             }
             let overlap_start = std::cmp::max(*s1, *s2);
             let overlap_end = std::cmp::min(*e1, *e2);
-            if overlap_end > overlap_start && (overlap_end - overlap_start) >= bp_overlap {
+            if overlap_end > overlap_start && overlap_end.saturating_sub(overlap_start) >= bp_overlap {
                 count_overlap +=1 ;
             }
         }
