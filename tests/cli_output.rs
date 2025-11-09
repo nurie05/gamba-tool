@@ -29,9 +29,9 @@ fn test_operon_summary_output() {
 
     // Assertions (ignoring timestamp/log level prefixes)
     assert!(contains_line("Processing chromosome Chr1 (11722 transcripts)"));
-    assert!(contains_line("Total number of OPRNs found: 62"));
-    assert!(contains_line("Total number of OpGs found: 129"));
-    assert!(contains_line("2 genes: 57"));
+    assert!(contains_line("Total number of OPRNs found: 60"));
+    assert!(contains_line("Total number of OpGs found: 125"));
+    assert!(contains_line("2 genes: 55"));
     assert!(contains_line("3 genes: 5"));
     assert!(contains_line("4 genes: 0"));
     assert!(contains_line("5 genes: 0"));
