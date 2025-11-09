@@ -3,7 +3,7 @@ use std::str;
 
 #[test]
 fn test_operon_summary_output() {
-    // Run the binary (assumes the package provides a bin target, e.g. `gamba_tool`)
+    // Run the binary (assumes the package provides a bin target, e.g. `gamba`)
     let output = Command::new(env!("CARGO_BIN_EXE_gamba"))
         .args([
             "-f", "tests/resources/Samples_test_chr1.gtf",
