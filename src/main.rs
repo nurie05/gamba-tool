@@ -13,26 +13,38 @@ use std::path::Path;
 type GeneId = String;
 
 #[derive(Parser, Debug)]
-#[command(name = "GAMBA")]
-#[command(about = "Detect polycistronic transcriptional units (operons) from a GTF file using coverage filtering.", long_about = None)]
+#[command(
+    name = "GAMBA",
+    version = env!("CARGO_PKG_VERSION"),
+    about = "Detect polycistronic transcriptional units (operons) from a GTF file using coverage filtering.",
+    long_about = None
+)]
 struct Args {
     /// Path to the input GTF file
     #[arg(short, long)]
     file: PathBuf,
 
-    /// Coverage threshold multiplier
+    /// Coverage threshold multiplier.
     #[arg(short, long, default_value_t = 1.0)]
     threshold: f32,
+    
+    /// Minimum percentage of exonic overlap to be considered 'contained transcript'.
+    #[arg(short, long, default_value_t = 0.5)]
+    min_overlap: f32,
+    
+    /// Minimum bp overlap to consider exonic overlap.
+    #[arg(short, long, default_value_t = 50)]
+    bp_overlap: u64,
 
-    /// Output file prefix
+    /// Output file prefix.
     #[arg(short, long)]
     prefix: Option<String>,
 
-    /// Output directory
+    /// Output directory.
     #[arg(short, long)]
     outdir: Option<String>,
 
-    /// Log file path
+    /// Log file path.
     #[arg(long)]
     log: Option<String>,
 }
@@ -50,36 +62,42 @@ struct Transcript {
     exons: Vec<(u64, u64)>,
     raw_lines: Vec<String>,
 }
-fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: u64) -> bool {
+fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: f32, bp_overlap: u64) -> bool {
     let mut count_overlap = 0 ;
+    let mut bp_overlap = bp_overlap ;
     for (s1, e1) in &t1.exons {
         for (s2, e2) in &t2.exons {
+            if e1-s1 < bp_overlap || e2-s2 < bp_overlap {
+                bp_overlap = std::cmp::min(*e2-*s2, *e1-*s1)
+            }
             let overlap_start = std::cmp::max(*s1, *s2);
             let overlap_end = std::cmp::min(*e1, *e2);
-            if overlap_end > overlap_start && (overlap_end - overlap_start) >= min_overlap {
+            if overlap_end > overlap_start && (overlap_end - overlap_start) >= bp_overlap {
                 count_overlap +=1 ;
             }
         }
     }
-    if count_overlap >= (&t2.exons.len()/2) {
+    let required_overlaps = (t2.exons.len() as f32 * min_overlap).ceil() as usize;
+    if count_overlap >= required_overlaps {
         return true ;
     }
     false
 }
 
-fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
+// Helper to resolve if t1 (OPRN) contains t2 (OpG); t1 less cov than t2
+fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32, min_overlap: f32, bp_overlap: u64) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage * threshold < t2.coverage
     && (t2.exons.len() > 1 || (t1.coverage * threshold * 10.0 < t2.coverage))
-    && exons_overlap(t1, t2, 50)
+    && exons_overlap(t1, t2, min_overlap, bp_overlap)
 }
+// Helper to resolve if t2 is an isoform of t1; t2 less cov than t1
 fn transcripts_inside(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage > t2.coverage * threshold
     && (t2.exons.len() > 1 || (t1.coverage > t2.coverage * threshold * 10.0 ))
-    && exons_overlap(t1, t2, 50)
 }
 
 fn transcripts_no_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
@@ -95,6 +113,8 @@ fn main() -> anyhow::Result<()> {
 
     let gtf_path = &args.file;
     let threshold = args.threshold;
+    let min_overlap = args.min_overlap;
+    let min_bp_overlap = args.bp_overlap;
     let out_prefix = args.prefix.clone().unwrap_or_else(|| {
         gtf_path.file_stem().unwrap().to_string_lossy().to_string()
     });
@@ -195,7 +215,7 @@ fn main() -> anyhow::Result<()> {
                 if container.id == inner.id || container.strand != inner.strand {
                     continue;
                 }
-                if transcripts_inside_op(container,inner, 250, threshold) {
+                if transcripts_inside_op(container,inner, 250, threshold, min_overlap, min_bp_overlap) {
                     contained.push(inner);
                 }
                 if transcripts_inside(inner,container, 250, threshold) {
@@ -213,7 +233,7 @@ fn main() -> anyhow::Result<()> {
                     if non_overlapping.last().map_or(true, |last: &&Transcript| transcripts_no_overlap(gene,last,50) ) {
                         non_overlapping.push(gene);
                     } else {
-                        let last = non_overlapping.last().unwrap().clone();
+                        let last = *non_overlapping.last().unwrap();
                         if gene.exons.len() > 1 {
                             if last.exons.len() == 1 || gene.fpkm_val > last.fpkm_val || (gene.fpkm_val == last.fpkm_val && gene.exons.len() > last.exons.len()) {
                                 non_overlapping.pop();
