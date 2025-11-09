@@ -23,12 +23,15 @@ Additionally it is possible to install it by using _Homebrew_:
 
 This tool has few parameters that can be specified (use --help to get the usage message):
 
-    -f, --file <FILE>            Path to the input GTF file
-    -t, --threshold <THRESHOLD>  Coverage threshold multiplier [default: 1]
-    -p, --prefix <PREFIX>        Output file prefix
-    -o, --outdir <OUTDIR>        Output directory
-        --log <LOG>              Log file path
-    -h, --help                   Print help
+    -f, --file <FILE>                Path to the input GTF file
+    -t, --threshold <THRESHOLD>      Coverage threshold multiplier [default: 1]
+    -m, --min-overlap <MIN_OVERLAP>  Minimum percentage of exonic overlap to be considered 'contained transcript' [default: 0.5]
+    -b, --bp-overlap <BP_OVERLAP>    Minimum bp overlap to consider exonic overlap [default: 50]
+    -p, --prefix <PREFIX>            Output file prefix
+    -o, --outdir <OUTDIR>            Output directory
+        --log <LOG>                  Log file path
+    -h, --help                       Print help
+    -V, --version                    Print version
 
 The generic command line for the default usage is:
 
