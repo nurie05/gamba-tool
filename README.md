@@ -6,7 +6,7 @@ It requires a GTF files with the values of 'cov' and 'fpkm', used during operon 
 
 ### Installation
 
-Source and binary files can be directly downloaded from the **Releases** page on this repository.
+Source and binary files can be directly downloaded from the [**Releases**](https://github.com/nurie05/gamba-tool/releases) page on this repository.
 Other option is to clone the repository and build the binary with **cargo**:
 
     git clone https://github.com/nurie05/gamba-tool.git
