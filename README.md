@@ -1,3 +1,4 @@
+[![Rust](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml/badge.svg)](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml) [![Build and Upload Binaries](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml/badge.svg?event=release)](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml)
 ## GAMBA: Gene Aggregation tool for Multicistronic Block Annotation
 
 GAMBA is a tool coded in **_Rust_** that identifies polycistronic transcriptional units (operons) among the annotated transcripts of a GTF file.
