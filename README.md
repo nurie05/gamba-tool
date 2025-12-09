@@ -1,4 +1,4 @@
-[![Rust](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml/badge.svg)](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml) [![Build and Upload Binaries](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml/badge.svg?event=release)](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml)
+[![Rust](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml/badge.svg)](https://github.com/nurie05/gamba-tool/actions/workflows/rust.yml) [![Build and Upload Binaries](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml/badge.svg?event=release)](https://github.com/nurie05/gamba-tool/actions/workflows/binaries.yml) [![DOI:10.64898/2025.12.04.692336](http://img.shields.io/badge/DOI-10.64898/2025.12.04.692336-B31B1B.svg)](https://doi.org/10.64898/2025.12.04.692336)
 ## GAMBA: Gene Aggregation tool for Multicistronic Block Annotation
 
 GAMBA is a tool coded in **_Rust_** that identifies polycistronic transcriptional units (operons) among the annotated transcripts of a GTF file.
@@ -40,3 +40,9 @@ The generic command line for the default usage is:
 
 Notice that only the '--file' parameter is mandatory.  In case '--output' is not specified, it will output all the files in the same directory where the GTF file is.
 In case '--prefix' is not specified, it will use the file name as output prefix for all files, including the log file.
+
+## Citation
+
+If you use GAMBA in your research, please cite the following publication:
+
+- NTorres-Aguila, N.P., Cassà, B., and Canestro, C. (2025). <b>CORAL: Accurate annotation of compact genomes using long-read RNA-seq, demonstrated in _Oikopleura dioica_</b>. bioRxiv. [DOI: 10.64898/2025.12.04.692336](https://doi.org/10.64898/2025.12.04.692336)
