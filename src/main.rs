@@ -28,6 +28,10 @@ struct Args {
     #[arg(short, long, default_value_t = 1.0)]
     threshold: f32,
     
+    /// Coverage threshold multiplier for monoexonic transcripts.
+    #[arg(long, default_value_t = 10.0)]
+    monoexonic_t: f32,
+    
     /// Minimum percentage of exonic overlap to be considered 'contained transcript'.
     #[arg(short, long, default_value_t = 0.5)]
     min_overlap: f32,
@@ -85,19 +89,19 @@ fn exons_overlap(t1: &Transcript, t2: &Transcript, min_overlap: f32, bp_overlap:
 }
 
 // Helper to resolve if t1 (OPRN) contains t2 (OpG); t1 less cov than t2
-fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32, min_overlap: f32, bp_overlap: u64) -> bool {
+fn transcripts_inside_op(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32, monoexonic_t: f32, min_overlap: f32, bp_overlap: u64) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage * threshold < t2.coverage
-    && (t2.exons.len() > 1 || (t1.coverage * threshold * 10.0 < t2.coverage))
+    && (t2.exons.len() > 1 || (t1.coverage * monoexonic_t < t2.coverage))
     && exons_overlap(t1, t2, min_overlap, bp_overlap)
 }
 // Helper to resolve if t2 is an isoform of t1; t2 less cov than t1
-fn transcripts_inside(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32) -> bool {
+fn transcripts_inside(t1: &Transcript, t2: &Transcript, tolerance: u64, threshold: f32, monoexonic_t: f32,) -> bool {
     t1.start <= t2.start + tolerance && t2.start + tolerance < t1.end + tolerance 
     && t1.end + tolerance >= t2.end && t2.end > t1.start
     && t1.coverage > t2.coverage * threshold
-    && (t2.exons.len() > 1 || (t1.coverage > t2.coverage * threshold * 10.0 ))
+    && (t2.exons.len() > 1 || (t1.coverage > t2.coverage * monoexonic_t ))
 }
 
 fn transcripts_no_overlap(t1: &Transcript, t2: &Transcript, tolerance: u64) -> bool {
@@ -113,6 +117,7 @@ fn main() -> anyhow::Result<()> {
 
     let gtf_path = &args.file;
     let threshold = args.threshold;
+    let monoexonic_t = args.monoexonic_t;
     let min_overlap = args.min_overlap;
     let min_bp_overlap = args.bp_overlap;
     let out_prefix = args.prefix.clone().unwrap_or_else(|| {
@@ -208,17 +213,17 @@ fn main() -> anyhow::Result<()> {
         for container in transcripts {
             let mut contained = Vec::new();
             let mut counter=0;
-            if (container.exons.len() > 1 && container.coverage > 1.0 * threshold) || (container.coverage > threshold * 10.0){
+            if (container.exons.len() > 1 && container.coverage > 1.0 * threshold) || (container.coverage > monoexonic_t ){
                 good_cov_ids.insert(container.id.clone());
             }
             for inner in transcripts {
                 if container.id == inner.id || container.strand != inner.strand {
                     continue;
                 }
-                if transcripts_inside_op(container,inner, 250, threshold, min_overlap, min_bp_overlap) {
+                if transcripts_inside_op(container,inner, 250, threshold, monoexonic_t , min_overlap, min_bp_overlap) {
                     contained.push(inner);
                 }
-                if transcripts_inside(inner,container, 250, threshold) {
+                if transcripts_inside(inner,container, 250, threshold, monoexonic_t) {
                     counter += 1;
                 }
             }
