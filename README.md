@@ -46,4 +46,4 @@ In case '--prefix' is not specified, it will use the file name as output prefix 
 
 If you use GAMBA in your research, please cite the following publication:
 
-- NTorres-Aguila, N.P., Cassà, B., and Canestro, C. (2025). <b>CORAL: Accurate annotation of compact genomes using long-read RNA-seq, demonstrated in _Oikopleura dioica_</b>. bioRxiv. [DOI: 10.64898/2025.12.04.692336](https://doi.org/10.64898/2025.12.04.692336)
+- Torres-Aguila, N.P., Cassà, B., and Canestro, C. (2025). <b>CORAL: Accurate annotation of compact genomes using long-read RNA-seq, demonstrated in _Oikopleura dioica_</b>. bioRxiv. [DOI: 10.64898/2025.12.04.692336](https://doi.org/10.64898/2025.12.04.692336)
