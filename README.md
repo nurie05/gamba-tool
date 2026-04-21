@@ -26,6 +26,7 @@ This tool has few parameters that can be specified (use --help to get the usage 
 
     -f, --file <FILE>                Path to the input GTF file
     -t, --threshold <THRESHOLD>      Coverage threshold multiplier [default: 1]
+        --monoexonic-t <MONOEXONIC_T>  Coverage threshold multiplier for monoexonic transcripts [default: 10]
     -m, --min-overlap <MIN_OVERLAP>  Minimum percentage of exonic overlap to be considered 'contained transcript' [default: 0.5]
     -b, --bp-overlap <BP_OVERLAP>    Minimum bp overlap to consider exonic overlap [default: 50]
     -p, --prefix <PREFIX>            Output file prefix
