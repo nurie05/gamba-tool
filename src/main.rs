@@ -255,8 +255,12 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 if non_overlapping.len() >= 2 {
-                    for gene in non_overlapping {
-                        operon_to_genes.push((container.gene_id.clone(), container.clone(), gene));
+                    let mut exon_num=0;
+                    for gene in non_overlapping.clone() { exon_num += gene.exons.len() }
+                    if exon_num > container.exons.len() {
+                        for gene in non_overlapping {
+                            operon_to_genes.push((container.gene_id.clone(), container.clone(), gene));
+                        }
                     }
                 }
             }
