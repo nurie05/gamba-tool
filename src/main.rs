@@ -213,7 +213,7 @@ fn main() -> anyhow::Result<()> {
         for container in transcripts {
             let mut contained = Vec::new();
             let mut counter=0;
-            if (container.exons.len() > 1 && container.coverage >= threshold) || (container.coverage >= monoexonic_t ){
+            if (container.exons.len() > 1 ) || (container.coverage >= monoexonic_t ){
                 good_cov_ids.insert(container.id.clone());
             }
             for inner in transcripts {
