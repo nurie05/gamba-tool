@@ -416,7 +416,7 @@ fn main() -> anyhow::Result<()> {
         (">5 genes", 0),
     ]);
 
-    for (_operon, genes) in operon_gene_map {
+    for (_operon, genes) in &operon_gene_map {
         match genes.len() {
             //1 => *summary.get_mut("1 genes").unwrap() += 1,
             2 => *summary.get_mut("2 genes").unwrap() += 1,
@@ -434,6 +434,12 @@ fn main() -> anyhow::Result<()> {
     for (category, count) in &summary {
         //println!("{}: {}", category, count);
         log::info!("{}: {}", category, count);
+    }
+
+    if let Some((max_operon, genes)) = operon_gene_map.iter().max_by_key(|(_, genes)| genes.len()) {
+        let max_count = genes.len();
+        println!("Operon with most genes: {} ({} genes)",max_operon, max_count);
+        log::info!("Operon with most genes: {} ({} genes)",max_operon, max_count);
     }
 
     Ok(())
